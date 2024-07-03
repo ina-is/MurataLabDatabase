@@ -190,6 +190,57 @@ class AlrAnnotation():
             listener = resp['listener']
 
         return new_responses
+    
+    def get_start_end_times(self, listener_filter: str) -> List[Tuple[float, float]]:
+        """
+        指定されたlistenerの語り手のスタートタイムとレスポンスのエンドタイムを取得
+
+        Args:
+            listener_filter (str): フィルタリングするリスナー
+        Returns:
+            List[Tuple[float, float]]: 語り手のスタートタイムとレスポンスのエンドタイムのリスト
+        """
+
+        start_end_times = []
+        units = self.get_annotation('clause')
+        responses = self.get_annotation('response')
+
+        for unit in units:
+            start_time = float(unit['starttime'])
+            for resp in responses:
+                if unit['starttime'] <= resp['starttime'] < unit['endtime'] and resp['listener'] == listener_filter:
+                    end_time = float(resp['endtime'])
+                    start_end_times.append((start_time, end_time))
+
+        return start_end_times
+
+    def annotate_intervals(self, listener_filter: str) -> List[Tuple[float, float, int]]:
+        """
+        語り手のStartTimeとリスナーのEndTimeの時間を10[ms]ごとにリスナーのStartTimeでアノテーションする
+
+        Args:
+            listener_filter (str): フィルタリングするリスナー
+        Returns:
+            List[Tuple[float, float, int]]: 10ミリ秒ごとのラベル付き時間区間のリスト
+        """
+
+        intervals = []
+        start_end_times = self.get_start_end_times(listener_filter)
+        responses = self.get_annotation('response')
+
+        for start_time, end_time in start_end_times:
+            current_time = start_time
+            while current_time < end_time:
+                next_time = round(current_time + 0.01, 2)  # 10ミリ秒後
+                label = 0
+                for resp in responses:
+                    if float(resp['starttime']) == current_time and resp['listener'] == listener_filter:
+                        label = 1
+                        break
+                intervals.append((current_time, next_time, label))
+                current_time = next_time
+
+        return intervals
 
 connect()
 
@@ -198,19 +249,18 @@ connect()
 
 alr_anno = AlrAnnotation(1)  # id を引数にしてインスタンスを作成
 
-# annotation の出力
-alr_anno.output_annotation()
+
+
+# 特定のリスナーの語り手のスタートタイムとレスポンスのエンドタイムの抽出
+listener_filter = 'o'  # フィルタリングするリスナーを指定
+intervals = alr_anno.annotate_intervals(listener_filter)
+print(f"10ミリ秒ごとのアノテーションされた時間区間:")
+for start, end, label in intervals:
+    print(f"Start Time: {start}, End Time: {end}, Label: {label}")
+
+
+
 alr_anno.output_response()
-
-
-
-
-
-
-
-
-
-
 
 
 close()
