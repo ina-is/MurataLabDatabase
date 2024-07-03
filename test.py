@@ -259,8 +259,4 @@ for start, end, label in intervals:
     print(f"Start Time: {start}, End Time: {end}, Label: {label}")
 
 
-
-alr_anno.output_response()
-
-
 close()
